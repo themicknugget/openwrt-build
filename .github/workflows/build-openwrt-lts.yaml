@@ -108,6 +108,7 @@ jobs:
 
       - name: Update Repo/Feeds
         id: update-repo
+        working-directory: openwrt
         run: |
           git pull
           ./scripts/feeds update -a
