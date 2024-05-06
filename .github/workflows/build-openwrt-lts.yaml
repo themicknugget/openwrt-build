@@ -114,7 +114,7 @@ jobs:
           ./scripts/feeds update -a
           ./scripts/feeds install -a
 
-      - name: Save kernel and some of the module sources to cache
+      - name: Cache repo
         uses: buildjet/cache/save@v3
         id: cache-repo
         with:
