@@ -1,0 +1,106 @@
+---
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+name: "OpenWRT 23.05"
+
+on:
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      LTS_TAG:
+        required: false
+        type: string
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  OPENWRT_URL: https://git.openwrt.org/openwrt/openwrt.git
+  OPENWRT_ARCH: amd64
+  OPENWRT_BUILD_BY: autobuild-vyos@whydontyou.work
+
+jobs:
+  release:
+    name: Build OpenWRT
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Generate Token
+        uses: actions/create-github-app-token@v1
+        id: app-token
+        with:
+          app-id: "${{ secrets.BOT_APP_ID }}"
+          private-key: "${{ secrets.BOT_APP_PRIVATE_KEY }}"
+
+      - name: Prepare Environment
+        run: |
+          # Install build dependencies
+          apt-get update
+          apt-get install -y \
+          sudo time git-core subversion build-essential g++ bash make \
+          libssl-dev patch libncurses5 libncurses5-dev zlib1g-dev gawk \
+          flex gettext wget unzip xz-utils python-is-python3 python3-distutils-extra \
+          python3 python3-distutils-extra python3-setuptools swig rsync curl \
+          libsnmp-dev liblzma-dev libpam0g-dev cpio rsync gcc-multilib libelf1 libelf-dev vim
+          apt-get clean
+          # Add user
+          useradd -m user
+          echo "${secrets.RUNNER_USER} ALL=(${secrets.RUNNER_USER}) NOPASSWD:ALL" >> /etc/sudoers
+
+      - name: Checkout
+        run-as: user
+        uses: actions/checkout@v4
+        with:
+          path: .
+          sparse-checkout: |
+            custom
+  
+      - name: Format version
+        id: version
+        shell: bash
+        run: |
+          OPENWRT_TAG=${{ inputs.LTS_TAG || vars.LTS_TAG }}
+          OPENWRT_VERSION=${OPENWRT_TAG%-*}
+          echo "openwrt-version=${OPENWRT_VERSION}" >> "$GITHUB_OUTPUT"
+          echo "openwrt-version-sanitized=${OPENWRT_VERSION//./_}" >> "$GITHUB_OUTPUT"
+  
+      - name: Increment build number
+        id: buildnumber
+        uses: action-pack/increment@v2
+        with:
+          name: OPENWRT_LTS_${{ steps.version.outputs.openwrt-version-sanitized }}_BUILD
+          token: ${{ steps.app-token.outputs.token }}
+
+      - name: Setup variables
+        id: vars
+        shell: bash
+        run: |
+          echo "tag-name=${{ steps.version.outputs.openwrt-version }}+${{ github.repository_owner }}.${{ steps.buildnumber.outputs.value }}" >> "$GITHUB_OUTPUT"
+          echo "generated-iso-name=openwrt-${{ steps.version.outputs.openwrt-version }}+${{ github.repository_owner }}.${{ steps.buildnumber.outputs.value }}-amd64" >> "$GITHUB_OUTPUT"
+          echo "target-iso-name=openwrt-${{ steps.version.outputs.openwrt-version }}+${{ github.repository_owner }}.${{ steps.buildnumber.outputs.value }}.amd64" >> "$GITHUB_OUTPUT"
+
+      - name: Restore cached repo
+        id: cache-restore
+        uses: buildjet/cache/restore@v3
+        with:
+          path: |
+            openwrt
+          key: openwrt-v${{ inputs.LTS_TAG || vars.LTS_TAG }}
+  
+      - name: Clone repo
+        run-as: user
+        if: steps.cache-restore.outputs.cache-hit != 'true'
+        id: clone-repo
+        run: |
+          git clone -b ${{ inputs.LTS_TAG || vars.LTS_TAG }} --depth 1 --single-branch ${{ env.openwrt_URL }} openwrt
+          cd openwrt
+          git switch -c "${{ inputs.LTS_TAG || vars.LTS_TAG }}"
+
+      - name: Update Repo/Feeds
+        run-as: user
+        id: update-repo
+        run: |
+          git pull
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
