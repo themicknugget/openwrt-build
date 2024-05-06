@@ -113,3 +113,11 @@ jobs:
           git pull
           ./scripts/feeds update -a
           ./scripts/feeds install -a
+
+      - name: Save kernel and some of the module sources to cache
+        uses: buildjet/cache/save@v3
+        id: cache-repo
+        with:
+          path: |
+            openwrt
+          key: openwrt-v${{ inputs.LTS_TAG || vars.LTS_TAG }}
