@@ -4,6 +4,13 @@ name: "OpenWRT 23.05"
 
 on:
   workflow_dispatch:
+    inputs:
+      LTS_TAG:
+        description: OpenWRT Version
+        required: false
+        type: string
+        default: v23.05.3
+
   workflow_call:
     inputs:
       LTS_TAG:
