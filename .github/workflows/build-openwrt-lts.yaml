@@ -48,6 +48,13 @@ jobs:
           useradd -m user
           echo "${secrets.RUNNER_USER} ALL=(${secrets.RUNNER_USER}) NOPASSWD:ALL" >> /etc/sudoers
 
+      - name: Maximize build space
+        uses: jlumbroso/free-disk-space@main
+        with:
+          large-packages: true
+          docker-images: true
+          swap-storage: true
+
       - name: Checkout
         run-as: user
         uses: actions/checkout@v4
