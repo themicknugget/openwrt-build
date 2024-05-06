@@ -51,12 +51,8 @@ jobs:
           python3 python3-distutils-extra python3-setuptools swig rsync curl \
           libsnmp-dev liblzma-dev libpam0g-dev cpio rsync gcc-multilib libelf1 libelf-dev vim
           apt-get clean
-          # Add user
-          useradd -m user
-          echo "${secrets.RUNNER_USER} ALL=(${secrets.RUNNER_USER}) NOPASSWD:ALL" >> /etc/sudoers
 
       - name: Checkout
-        run-as: user
         uses: actions/checkout@v4
         with:
           path: .
@@ -96,7 +92,6 @@ jobs:
           key: openwrt-v${{ inputs.LTS_TAG || vars.LTS_TAG }}
   
       - name: Clone repo
-        run-as: user
         if: steps.cache-restore.outputs.cache-hit != 'true'
         id: clone-repo
         run: |
@@ -105,7 +100,6 @@ jobs:
           git switch -c "${{ inputs.LTS_TAG || vars.LTS_TAG }}"
 
       - name: Update Repo/Feeds
-        run-as: user
         id: update-repo
         run: |
           git pull
