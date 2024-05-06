@@ -17,7 +17,7 @@ concurrency:
 env:
   OPENWRT_URL: https://git.openwrt.org/openwrt/openwrt.git
   OPENWRT_ARCH: amd64
-  OPENWRT_BUILD_BY: autobuild-vyos@whydontyou.work
+  OPENWRT_BUILD_BY: autobuild-openwrt@whydontyou.work
 
 jobs:
   release:
@@ -43,14 +43,14 @@ jobs:
       - name: Prepare Environment
         run: |
           # Install build dependencies
-          apt-get update
-          apt-get install -y \
+          sudo apt-get update
+          sudo apt-get install -y \
           sudo time git-core subversion build-essential g++ bash make \
           libssl-dev patch libncurses5 libncurses5-dev zlib1g-dev gawk \
           flex gettext wget unzip xz-utils python-is-python3 python3-distutils-extra \
           python3 python3-distutils-extra python3-setuptools swig rsync curl \
           libsnmp-dev liblzma-dev libpam0g-dev cpio rsync gcc-multilib libelf1 libelf-dev vim
-          apt-get clean
+          sudo apt-get clean
 
       - name: Checkout
         uses: actions/checkout@v4
