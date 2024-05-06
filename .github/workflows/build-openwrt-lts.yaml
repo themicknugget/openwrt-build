@@ -102,7 +102,7 @@ jobs:
         if: steps.cache-restore.outputs.cache-hit != 'true'
         id: clone-repo
         run: |
-          git clone -b ${{ inputs.LTS_TAG || vars.LTS_TAG }} --depth 1 --single-branch ${{ env.openwrt_URL }} openwrt
+          git clone -b ${{ inputs.LTS_TAG || vars.LTS_TAG }} --depth 1 --single-branch ${{ env.OPENWRT_URL }} openwrt
           cd openwrt
           git switch -c "${{ inputs.LTS_TAG || vars.LTS_TAG }}"
 
