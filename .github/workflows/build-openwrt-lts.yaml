@@ -110,7 +110,7 @@ jobs:
         id: generate-kernel-config
         working-directory: openwrt
         run: |
-          wget -o merge_config.sh https://github.com/torvalds/linux/raw/master/scripts/kconfig/merge_config.sh
+          wget -q -O merge_config.sh https://raw.githubusercontent.com/torvalds/linux/master/scripts/kconfig/merge_config.sh
           ORIGINAL_CONFIG=$(ls -1 target/linux/x86/generic/config-*)
 
           KCONFIG_CONFIG=newconfig bash merge_config.sh -m $ORIGINAL_CONFIG $CONFIG_FRAGMENTS
