@@ -98,14 +98,6 @@ jobs:
           ./scripts/feeds install -a
           wget https://downloads.openwrt.org/releases/${{ inputs.LTS_TAG || vars.LTS_TAG }}/targets/x86/generic/config.buildinfo -O .config
 
-      - name: Cache repo
-        uses: buildjet/cache/save@v3
-        id: cache-repo
-        with:
-          path: |
-            openwrt
-          key: openwrt-v${{ inputs.LTS_TAG || vars.LTS_TAG }}
-
       - name: Generate kernel config
         id: generate-kernel-config
         working-directory: openwrt
@@ -138,6 +130,18 @@ jobs:
         working-directory: openwrt
         run: |
           make -j $(nproc) download world
+
+      - uses: buildjet/cache-delete@v1
+        with:
+          cache_key: openwrt-v${{ inputs.LTS_TAG || vars.LTS_TAG }}
+
+      - name: Cache repo
+        uses: buildjet/cache/save@v3
+        id: cache-repo
+        with:
+          path: |
+            openwrt
+          key: openwrt-v${{ inputs.LTS_TAG || vars.LTS_TAG }}
 
       - name: List files
         working-directory: openwrt
