@@ -96,7 +96,7 @@ jobs:
         with:
           path: |
             openwrt
-          key: openwrt-v${{ inputs.LTS_TAG || vars.LTS_TAG }}
+          key: openwrt-${{ inputs.LTS_TAG || vars.LTS_TAG }}
   
       - name: Clone repo
         if: steps.cache-restore.outputs.cache-hit != 'true'
@@ -113,6 +113,7 @@ jobs:
           git pull
           ./scripts/feeds update -a
           ./scripts/feeds install -a
+          wget https://downloads.openwrt.org/releases/${{ inputs.LTS_TAG || vars.LTS_TAG }}/targets/x86/generic/config.buildinfo -O .config
 
       - name: Cache repo
         uses: buildjet/cache/save@v3
@@ -120,4 +121,41 @@ jobs:
         with:
           path: |
             openwrt
-          key: openwrt-v${{ inputs.LTS_TAG || vars.LTS_TAG }}
+          key: openwrt-${{ inputs.LTS_TAG || vars.LTS_TAG }}
+
+      - name: Generate kernel config
+        id: generate-kernel-config
+        working-directory: openwrt
+        run: |
+          wget -o merge_config.sh https://github.com/torvalds/linux/raw/master/scripts/kconfig/merge_config.sh
+          ORIGINAL_CONFIG=$(ls -1 target/linux/x86/generic/config-*)
+
+          KCONFIG_CONFIG=newconfig bash merge_config.sh -m $ORIGINAL_CONFIG $CONFIG_FRAGMENTS
+
+          # Handle merge result
+          if [ $? -eq 0 ]; then
+            echo "Merge completed successfully."
+            # Copy newconfig to ORIGINAL_CONFIG if configs differ
+            if [ ! -f "$ORIGINAL_CONFIG" ] || ! diff -q "$ORIGINAL_CONFIG" "newconfig" > /dev/null; then
+              echo "Config changed, updating."
+              cp -f newconfig $ORIGINAL_CONFIG
+              echo "kconfig-changed=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "Config did not change."
+            fi
+            exit 0
+          else
+            echo "Merge failed."
+            exit 1
+          fi
+
+      - name: Download sources
+        id: download-dependencies
+        working-directory: openwrt
+        run: |
+          make -j $(nproc) download world
+
+      - name: List files
+        working-directory: openwrt
+        run: |
+          ls -lR bin/targets/x86/generic
