@@ -9,7 +9,7 @@ on:
         description: OpenWRT Version
         required: false
         type: string
-        default: v23.05.3
+        default: 23.05.3
 
   workflow_call:
     inputs:
@@ -66,15 +66,6 @@ jobs:
           sparse-checkout: |
             custom
   
-      - name: Format version
-        id: version
-        shell: bash
-        run: |
-          OPENWRT_TAG=${{ inputs.LTS_TAG || vars.LTS_TAG }}
-          OPENWRT_VERSION=${OPENWRT_TAG%-*}
-          echo "openwrt-version=${OPENWRT_VERSION}" >> "$GITHUB_OUTPUT"
-          echo "openwrt-version-sanitized=${OPENWRT_VERSION//./_}" >> "$GITHUB_OUTPUT"
-  
       - name: Increment build number
         id: buildnumber
         uses: action-pack/increment@v2
@@ -82,29 +73,21 @@ jobs:
           name: OPENWRT_LTS_${{ steps.version.outputs.openwrt-version-sanitized }}_BUILD
           token: ${{ steps.app-token.outputs.token }}
 
-      - name: Setup variables
-        id: vars
-        shell: bash
-        run: |
-          echo "tag-name=${{ steps.version.outputs.openwrt-version }}+${{ github.repository_owner }}.${{ steps.buildnumber.outputs.value }}" >> "$GITHUB_OUTPUT"
-          echo "generated-iso-name=openwrt-${{ steps.version.outputs.openwrt-version }}+${{ github.repository_owner }}.${{ steps.buildnumber.outputs.value }}-amd64" >> "$GITHUB_OUTPUT"
-          echo "target-iso-name=openwrt-${{ steps.version.outputs.openwrt-version }}+${{ github.repository_owner }}.${{ steps.buildnumber.outputs.value }}.amd64" >> "$GITHUB_OUTPUT"
-
       - name: Restore cached repo
         id: cache-restore
         uses: buildjet/cache/restore@v3
         with:
           path: |
             openwrt
-          key: openwrt-${{ inputs.LTS_TAG || vars.LTS_TAG }}
+          key: openwrt-v${{ inputs.LTS_TAG || vars.LTS_TAG }}
   
       - name: Clone repo
         if: steps.cache-restore.outputs.cache-hit != 'true'
         id: clone-repo
         run: |
-          git clone -b ${{ inputs.LTS_TAG || vars.LTS_TAG }} --depth 1 --single-branch ${{ env.OPENWRT_URL }} openwrt
+          git clone -b v${{ inputs.LTS_TAG || vars.LTS_TAG }} --depth 1 --single-branch ${{ env.OPENWRT_URL }} openwrt
           cd openwrt
-          git switch -c "${{ inputs.LTS_TAG || vars.LTS_TAG }}"
+          git switch -c "v${{ inputs.LTS_TAG || vars.LTS_TAG }}"
 
       - name: Update Repo/Feeds
         id: update-repo
@@ -121,7 +104,7 @@ jobs:
         with:
           path: |
             openwrt
-          key: openwrt-${{ inputs.LTS_TAG || vars.LTS_TAG }}
+          key: openwrt-v${{ inputs.LTS_TAG || vars.LTS_TAG }}
 
       - name: Generate kernel config
         id: generate-kernel-config
