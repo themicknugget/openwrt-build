@@ -126,12 +126,12 @@ jobs:
             else
               echo "Config did not change."
             fi
+            make defconfig
             exit 0
           else
             echo "Merge failed."
             exit 1
           fi
-          make defconfig
 
       - name: Download sources
         id: download-dependencies
