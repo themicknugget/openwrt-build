@@ -98,6 +98,12 @@ jobs:
           ./scripts/feeds install -a
           wget https://downloads.openwrt.org/releases/${{ inputs.LTS_TAG || vars.LTS_TAG }}/targets/x86/generic/config.buildinfo -O .config
 
+      - name: Add Patches
+        id: add-patches
+        working-directory: openwrt
+        run: |
+          cp -R ../custom/openwrt/* .
+
       - name: Generate kernel config
         id: generate-kernel-config
         working-directory: openwrt
@@ -129,7 +135,7 @@ jobs:
         id: download-dependencies
         working-directory: openwrt
         run: |
-          make -j $(nproc) download world
+          make -j $(nproc) download
 
       - uses: buildjet/cache-delete@v1
         with:
@@ -142,6 +148,12 @@ jobs:
           path: |
             openwrt
           key: openwrt-v${{ inputs.LTS_TAG || vars.LTS_TAG }}
+
+      - name: Build OpenWRT
+        id: build-openwrt
+        working-directory: openwrt
+        run: |
+          make -j $(nproc) world
 
       - name: List files
         working-directory: openwrt
