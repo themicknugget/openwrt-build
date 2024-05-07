@@ -131,6 +131,7 @@ jobs:
             echo "Merge failed."
             exit 1
           fi
+          make defconfig
 
       - name: Download sources
         id: download-dependencies
