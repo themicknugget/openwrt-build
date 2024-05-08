@@ -102,7 +102,7 @@ jobs:
         id: add-patches
         working-directory: openwrt
         run: |
-          cp -R ../custom/openwrt/* .
+          cp -Rv ../custom/openwrt/* .
 
       - name: Generate kernel config
         id: generate-kernel-config
