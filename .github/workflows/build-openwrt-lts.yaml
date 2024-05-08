@@ -111,6 +111,11 @@ jobs:
           wget -q -O merge_config.sh https://raw.githubusercontent.com/torvalds/linux/master/scripts/kconfig/merge_config.sh
           ORIGINAL_CONFIG=$(ls -1 target/linux/x86/generic/config-*)
 
+          CONFIG_FRAGMENTS=$(find ../custom/kernel-configs -type f)
+
+          # Exit if no config fragments found
+          [ -z "$CONFIG_FRAGMENTS" ] && echo "No config fragments found in custom/kernel-configs, skipping" && exit 0
+
           KCONFIG_CONFIG=newconfig bash merge_config.sh -m $ORIGINAL_CONFIG $CONFIG_FRAGMENTS
 
           # Handle merge result
@@ -124,7 +129,6 @@ jobs:
             else
               echo "Config did not change."
             fi
-            make defconfig
             exit 0
           else
             echo "Merge failed."
@@ -135,6 +139,7 @@ jobs:
         id: download-dependencies
         working-directory: openwrt
         run: |
+          make defconfig
           make -j $(nproc) download
 
       - name: Cache repo
