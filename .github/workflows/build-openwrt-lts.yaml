@@ -137,10 +137,6 @@ jobs:
         run: |
           make -j $(nproc) download
 
-      - uses: buildjet/cache-delete@v1
-        with:
-          cache_key: openwrt-v${{ inputs.LTS_TAG || vars.LTS_TAG }}
-
       - name: Cache repo
         uses: buildjet/cache/save@v3
         id: cache-repo
