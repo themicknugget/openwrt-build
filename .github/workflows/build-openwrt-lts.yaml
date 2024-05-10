@@ -154,7 +154,7 @@ jobs:
         id: build-openwrt
         working-directory: openwrt
         run: |
-          make -j $(nproc) world
+          make -j1 world V=s
 
       - name: List files
         working-directory: openwrt
