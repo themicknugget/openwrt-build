@@ -40,12 +40,24 @@ jobs:
           app-id: "${{ secrets.BOT_APP_ID }}"
           private-key: "${{ secrets.BOT_APP_PRIVATE_KEY }}"
 
-      - name: Maximize build space
-        uses: jlumbroso/free-disk-space@main
-        with:
-          large-packages: true
-          docker-images: true
-          swap-storage: true
+      - name: Initialization environment
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          set +e
+          docker rmi `docker images -q`
+          echo "Deleting files, please wait ..."
+          sudo rm -rf \
+            /usr/share/dotnet \
+            /usr/local/lib/android \
+            /opt/ghc \
+            /etc/mysql \
+            /etc/php
+          sudo -E apt-get -y purge azure-cli* docker* ghc* zulu* hhvm* llvm* firefox* google* dotnet* aspnetcore* powershell* openjdk* adoptopenjdk* mysql* php* mongodb* moby* snap* || true
+          sudo -E apt-get update
+          sudo -E apt-get -y install ack antlr3 asciidoc autoconf automake autopoint binutils bison build-essential bzip2 ccache cmake cpio curl device-tree-compiler fastjar flex gawk gettext gcc-multilib g++-multilib git gperf haveged help2man intltool libc6-dev-i386 libelf-dev libfuse-dev libglib2.0-dev libgmp3-dev libltdl-dev libmpc-dev libmpfr-dev libncurses5-dev libncursesw5-dev libpython3-dev libreadline-dev libssl-dev libtool lrzsz mkisofs msmtp nano ninja-build p7zip p7zip-full patch pkgconf python2.7 python3 python3-pyelftools python3-setuptools qemu-utils rsync scons squashfs-tools subversion swig texinfo uglifyjs upx-ucl unzip vim wget xmlto xxd zlib1g-dev qemu-img
+          sudo -E apt-get -y autoremove --purge
+          sudo -E apt-get clean
 
       - name: Prepare Environment
         run: |
@@ -59,12 +71,12 @@ jobs:
           libsnmp-dev liblzma-dev libpam0g-dev cpio rsync gcc-multilib libelf1 libelf-dev vim
           sudo apt-get clean
 
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          path: .
-          sparse-checkout: |
-            custom
+      # - name: Checkout
+      #   uses: actions/checkout@v4
+      #   with:
+      #     path: .
+      #     sparse-checkout: |
+      #       custom
   
       - name: Increment build number
         id: buildnumber
@@ -86,8 +98,37 @@ jobs:
         id: clone-repo
         run: |
           git clone -b v${{ inputs.LTS_TAG || vars.LTS_TAG }} --depth 1 --single-branch ${{ env.OPENWRT_URL }} openwrt
-          cd openwrt
-          git switch -c "v${{ inputs.LTS_TAG || vars.LTS_TAG }}"
+
+      # - name: Generate kernel config
+      #   id: generate-kernel-config
+      #   working-directory: openwrt
+      #   run: |
+      #     wget -q -O merge_config.sh https://raw.githubusercontent.com/torvalds/linux/master/scripts/kconfig/merge_config.sh
+      #     ORIGINAL_CONFIG=$(ls -1 target/linux/x86/generic/config-*)
+
+      #     CONFIG_FRAGMENTS=$(find ../custom/kernel-configs -type f)
+
+      #     # Exit if no config fragments found
+      #     [ -z "$CONFIG_FRAGMENTS" ] && echo "No config fragments found in custom/kernel-configs, skipping" && exit 0
+
+      #     KCONFIG_CONFIG=newconfig bash merge_config.sh -m $ORIGINAL_CONFIG $CONFIG_FRAGMENTS
+
+      #     # Handle merge result
+      #     if [ $? -eq 0 ]; then
+      #       echo "Merge completed successfully."
+      #       # Copy newconfig to ORIGINAL_CONFIG if configs differ
+      #       if [ ! -f "$ORIGINAL_CONFIG" ] || ! diff -q "$ORIGINAL_CONFIG" "newconfig" > /dev/null; then
+      #         echo "Config changed, updating."
+      #         cp -f newconfig $ORIGINAL_CONFIG
+      #         echo "kconfig-changed=true" >> "$GITHUB_OUTPUT"
+      #       else
+      #         echo "Config did not change."
+      #       fi
+      #       exit 0
+      #     else
+      #       echo "Merge failed."
+      #       exit 1
+      #     fi
 
       - name: Update Repo/Feeds
         id: update-repo
@@ -96,44 +137,15 @@ jobs:
           git pull
           ./scripts/feeds update -a
           ./scripts/feeds install -a
-          wget https://downloads.openwrt.org/releases/${{ inputs.LTS_TAG || vars.LTS_TAG }}/targets/x86/generic/config.buildinfo -O .config
+          wget https://downloads.openwrt.org/releases/${{ inputs.LTS_TAG || vars.LTS_TAG }}/targets/x86/64/config.buildinfo -O .config
+          rm -rf target/linux/x86/64/files/linux-firmware
+          git clone -b $(grep "PKG_VERSION:=" package/firmware/linux-firmware/Makefile  | sed 's/^PKG_VERSION:=//') --depth 1 --single-branch https://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git target/linux/x86/64/files/firmware
 
-      - name: Add Patches
-        id: add-patches
-        working-directory: openwrt
-        run: |
-          cp -Rv ../custom/openwrt/* .
-
-      - name: Generate kernel config
-        id: generate-kernel-config
-        working-directory: openwrt
-        run: |
-          wget -q -O merge_config.sh https://raw.githubusercontent.com/torvalds/linux/master/scripts/kconfig/merge_config.sh
-          ORIGINAL_CONFIG=$(ls -1 target/linux/x86/generic/config-*)
-
-          CONFIG_FRAGMENTS=$(find ../custom/kernel-configs -type f)
-
-          # Exit if no config fragments found
-          [ -z "$CONFIG_FRAGMENTS" ] && echo "No config fragments found in custom/kernel-configs, skipping" && exit 0
-
-          KCONFIG_CONFIG=newconfig bash merge_config.sh -m $ORIGINAL_CONFIG $CONFIG_FRAGMENTS
-
-          # Handle merge result
-          if [ $? -eq 0 ]; then
-            echo "Merge completed successfully."
-            # Copy newconfig to ORIGINAL_CONFIG if configs differ
-            if [ ! -f "$ORIGINAL_CONFIG" ] || ! diff -q "$ORIGINAL_CONFIG" "newconfig" > /dev/null; then
-              echo "Config changed, updating."
-              cp -f newconfig $ORIGINAL_CONFIG
-              echo "kconfig-changed=true" >> "$GITHUB_OUTPUT"
-            else
-              echo "Config did not change."
-            fi
-            exit 0
-          else
-            echo "Merge failed."
-            exit 1
-          fi
+      # - name: Add Patches
+      #   id: add-patches
+      #   working-directory: openwrt
+      #   run: |
+      #     cp -Rv ../custom/openwrt/* .
 
       - name: Download sources
         id: download-dependencies
