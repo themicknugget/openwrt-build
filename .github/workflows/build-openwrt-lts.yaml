@@ -59,6 +59,10 @@ jobs:
           sudo -E apt-get -y autoremove --purge
           sudo -E apt-get clean
 
+      - name: Server Benchmark
+        run: |
+          wget -qO- --no-check-certificate https://raw.githubusercontent.com/Kurokosama/serverbench/main/bench.sh | bash
+
       - name: Prepare Environment
         run: |
           # Install build dependencies
@@ -71,12 +75,12 @@ jobs:
           libsnmp-dev liblzma-dev libpam0g-dev cpio rsync gcc-multilib libelf1 libelf-dev vim
           sudo apt-get clean
 
-      # - name: Checkout
-      #   uses: actions/checkout@v4
-      #   with:
-      #     path: .
-      #     sparse-checkout: |
-      #       custom
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          path: .
+          sparse-checkout: |
+            custom
   
       - name: Increment build number
         id: buildnumber
@@ -141,11 +145,11 @@ jobs:
           rm -rf target/linux/x86/64/files/linux-firmware
           git clone -b $(grep "PKG_VERSION:=" package/firmware/linux-firmware/Makefile  | sed 's/^PKG_VERSION:=//') --depth 1 --single-branch https://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git target/linux/x86/64/files/firmware
 
-      # - name: Add Patches
-      #   id: add-patches
-      #   working-directory: openwrt
-      #   run: |
-      #     cp -Rv ../custom/openwrt/* .
+      - name: Add Patches
+        id: add-patches
+        working-directory: openwrt
+        run: |
+          cp -Rv ../custom/openwrt/* .
 
       - name: Download sources
         id: download-dependencies
@@ -166,7 +170,7 @@ jobs:
         id: build-openwrt
         working-directory: openwrt
         run: |
-          make -j1 world V=s
+          make -j$(nproc) world V=s
 
       - name: List files
         working-directory: openwrt
