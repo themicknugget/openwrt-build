@@ -115,7 +115,8 @@ jobs:
             # Copy newconfig to ORIGINAL_CONFIG if configs differ
             if [ ! -f "$ORIGINAL_CONFIG" ] || ! diff -q "$ORIGINAL_CONFIG" "newconfig" > /dev/null; then
               echo "Config changed, updating."
-              cp -f newconfig $ORIGINAL_CONFIG
+              cat newconfig | envsubst | tee -a $ORIGINAL_CONFIG
+              # cp -f newconfig $ORIGINAL_CONFIG
               echo "kconfig-changed=true" >> "$GITHUB_OUTPUT"
             else
               echo "Config did not change."
