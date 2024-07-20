@@ -95,36 +95,36 @@ jobs:
         run: |
           git clone -b v${{ inputs.LTS_TAG || vars.LTS_TAG }} --depth 1 --single-branch ${{ env.OPENWRT_URL }} openwrt
 
-      # - name: Generate kernel config
-      #   id: generate-kernel-config
-      #   working-directory: openwrt
-      #   run: |
-      #     wget -q -O merge_config.sh https://raw.githubusercontent.com/torvalds/linux/master/scripts/kconfig/merge_config.sh
-      #     ORIGINAL_CONFIG=$(ls -1 target/linux/x86/generic/config-*)
+      - name: Generate kernel config
+        id: generate-kernel-config
+        working-directory: openwrt
+        run: |
+          wget -q -O merge_config.sh https://raw.githubusercontent.com/torvalds/linux/master/scripts/kconfig/merge_config.sh
+          ORIGINAL_CONFIG=$(ls -1 target/linux/x86/64/config-*)
 
-      #     CONFIG_FRAGMENTS=$(find ../custom/kernel-configs -type f)
+          CONFIG_FRAGMENTS=$(find ../custom/kernel-configs -type f)
 
-      #     # Exit if no config fragments found
-      #     [ -z "$CONFIG_FRAGMENTS" ] && echo "No config fragments found in custom/kernel-configs, skipping" && exit 0
+          # Exit if no config fragments found
+          [ -z "$CONFIG_FRAGMENTS" ] && echo "No config fragments found in custom/kernel-configs, skipping" && exit 0
 
-      #     KCONFIG_CONFIG=newconfig bash merge_config.sh -m $ORIGINAL_CONFIG $CONFIG_FRAGMENTS
+          KCONFIG_CONFIG=newconfig bash merge_config.sh -m $ORIGINAL_CONFIG $CONFIG_FRAGMENTS
 
-      #     # Handle merge result
-      #     if [ $? -eq 0 ]; then
-      #       echo "Merge completed successfully."
-      #       # Copy newconfig to ORIGINAL_CONFIG if configs differ
-      #       if [ ! -f "$ORIGINAL_CONFIG" ] || ! diff -q "$ORIGINAL_CONFIG" "newconfig" > /dev/null; then
-      #         echo "Config changed, updating."
-      #         cp -f newconfig $ORIGINAL_CONFIG
-      #         echo "kconfig-changed=true" >> "$GITHUB_OUTPUT"
-      #       else
-      #         echo "Config did not change."
-      #       fi
-      #       exit 0
-      #     else
-      #       echo "Merge failed."
-      #       exit 1
-      #     fi
+          # Handle merge result
+          if [ $? -eq 0 ]; then
+            echo "Merge completed successfully."
+            # Copy newconfig to ORIGINAL_CONFIG if configs differ
+            if [ ! -f "$ORIGINAL_CONFIG" ] || ! diff -q "$ORIGINAL_CONFIG" "newconfig" > /dev/null; then
+              echo "Config changed, updating."
+              cp -f newconfig $ORIGINAL_CONFIG
+              echo "kconfig-changed=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "Config did not change."
+            fi
+            exit 0
+          else
+            echo "Merge failed."
+            exit 1
+          fi
 
       - name: Update Repo/Feeds
         id: update-repo
